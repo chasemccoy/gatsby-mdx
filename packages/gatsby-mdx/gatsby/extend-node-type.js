@@ -15,6 +15,9 @@ const toString = require("mdast-util-to-string");
 const generateTOC = require("mdast-util-toc");
 const stripMarkdown = require("strip-markdown");
 const prune = require("underscore.string/prune");
+const unified = require("unified");
+const parse = require("rehype-parse");
+const toMdast = require("hast-util-to-mdast");
 
 const debug = require("debug")("gatsby-mdx:extend-node-type");
 const renderHTML = require("../utils/render-html");
@@ -198,7 +201,15 @@ module.exports = (
           }
         },
         async resolve(mdxNode, { maxDepth }) {
-          const { mdast } = await processMDX({ node: mdxNode });
+          const { body } = await processMDX({ node: mdxNode });
+          const withMDX = renderHTML(body);
+          const html = await withMDX(store.getState().webpack);
+
+          const hast = unified()
+            .use(parse)
+            .parse(html);
+
+          const mdast = toMdast(hast);
           const toc = generateTOC(mdast, maxDepth);
 
           return getTableOfContents(toc.map, {});
